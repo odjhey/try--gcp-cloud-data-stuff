@@ -1,0 +1,241 @@
+{
+    "name": "CampaignPipeline",
+    "description": "https://cloud.google.com/data-fusion/docs/tutorials/targeting-campaign-pipeline",
+    "artifact": {
+        "name": "cdap-data-pipeline",
+        "version": "6.8.3",
+        "scope": "SYSTEM"
+    },
+    "config": {
+        "stages": [
+            {
+                "name": "GCSFile",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "GCSFile",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.21.2",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "path": "gs://campaign-tutorial/customers.csv",
+                        "fileEncoding": "UTF-8",
+                        "useConnection": "true",
+                        "format": "csv",
+                        "enableQuotedValues": "false",
+                        "connection": "${conn(Sample Buckets)}",
+                        "skipHeader": "false",
+                        "referenceName": "campaign-tutorial.customers.csv",
+                        "schema": "{\"type\":\"record\",\"name\":\"text\",\"fields\":[{\"name\":\"body_0\",\"type\":\"string\"},{\"name\":\"body_1\",\"type\":\"string\"},{\"name\":\"body_2\",\"type\":\"string\"},{\"name\":\"body_3\",\"type\":\"string\"},{\"name\":\"body_4\",\"type\":\"string\"}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"text\",\"fields\":[{\"name\":\"body_0\",\"type\":\"string\"},{\"name\":\"body_1\",\"type\":\"string\"},{\"name\":\"body_2\",\"type\":\"string\"},{\"name\":\"body_3\",\"type\":\"string\"},{\"name\":\"body_4\",\"type\":\"string\"}]}",
+                "id": "GCSFile",
+                "type": "batchsource",
+                "label": "GCSFile",
+                "icon": "fa-plug",
+                "$$hashKey": "object:32",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "408px",
+                    "top": "270px"
+                }
+            },
+            {
+                "name": "Wrangler",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "Wrangler",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.8.2",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "directives": "parse-as-csv :body_0 ',' false\ndrop :body_0_1\nset columns Name,StreetAddress,City,State,Country\nfilter-rows-on regex-not-match State ^(California|Oregon|Washington)$\nfilter-rows-on regex-not-match StreetAddress .*(?i)Avenue.*\ndrop :Country",
+                        "field": "*",
+                        "precondition": "false",
+                        "workspaceId": "d8e6422d-0e87-408e-893a-1d721e093f06",
+                        "schema": "{\"type\":\"record\",\"name\":\"record\",\"fields\":[{\"name\":\"Name\",\"type\":[\"string\",\"null\"]},{\"name\":\"StreetAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]}]}",
+                        "on-error": "fail-pipeline"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"record\",\"fields\":[{\"name\":\"Name\",\"type\":[\"string\",\"null\"]},{\"name\":\"StreetAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "GCSFile",
+                        "schema": "{\"type\":\"record\",\"name\":\"text\",\"fields\":[{\"name\":\"body_0\",\"type\":\"string\"},{\"name\":\"body_1\",\"type\":\"string\"},{\"name\":\"body_2\",\"type\":\"string\"},{\"name\":\"body_3\",\"type\":\"string\"},{\"name\":\"body_4\",\"type\":\"string\"}]}"
+                    }
+                ],
+                "id": "Wrangler",
+                "type": "transform",
+                "label": "Wrangler",
+                "icon": "icon-DataPreparation",
+                "$$hashKey": "object:33",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "708px",
+                    "top": "270px"
+                }
+            },
+            {
+                "name": "Joiner",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "Joiner",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.10.2",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "selectedFields": "Wrangler.Name as Name,Wrangler.StreetAddress as StreetAddress,Wrangler.City as City,BigQuery.abbreviation as State",
+                        "requiredInputs": "Wrangler",
+                        "conditionType": "basic",
+                        "joinKeys": "Wrangler.State = BigQuery.name",
+                        "joinNullKeys": "true",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"Name\",\"type\":[\"string\",\"null\"]},{\"name\":\"StreetAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"Name\",\"type\":[\"string\",\"null\"]},{\"name\":\"StreetAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "Wrangler",
+                        "schema": "{\"type\":\"record\",\"name\":\"record\",\"fields\":[{\"name\":\"Name\",\"type\":[\"string\",\"null\"]},{\"name\":\"StreetAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "BigQuery",
+                        "schema": "{\"type\":\"record\",\"name\":\"output\",\"fields\":[{\"name\":\"name\",\"type\":[\"string\",\"null\"]},{\"name\":\"abbreviation\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "Joiner",
+                "type": "batchjoiner",
+                "label": "Joiner",
+                "icon": "icon-joiner",
+                "$$hashKey": "object:34",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "1008px",
+                    "top": "365px"
+                }
+            },
+            {
+                "name": "BigQuery Multi Table",
+                "plugin": {
+                    "name": "BigQueryTable",
+                    "type": "batchsink",
+                    "label": "BigQuery Multi Table",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.21.2",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "customer_data_abbreviated_states",
+                        "dataset": "dis_user_guide",
+                        "table": "customer_data_abbreviated_states",
+                        "operation": "insert",
+                        "truncateTable": "false",
+                        "allowSchemaRelaxation": "false",
+                        "location": "US",
+                        "createPartitionedTable": "false",
+                        "partitioningType": "TIME",
+                        "partitionFilterRequired": "false"
+                    }
+                },
+                "outputSchema": "",
+                "inputSchema": [],
+                "id": "BigQuery-Multi-Table",
+                "type": "batchsink",
+                "label": "BigQuery Multi Table",
+                "icon": "fa-plug",
+                "$$hashKey": "object:35",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "1308px",
+                    "top": "365px"
+                }
+            },
+            {
+                "name": "BigQuery",
+                "plugin": {
+                    "name": "BigQueryTable",
+                    "type": "batchsource",
+                    "label": "BigQuery",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.21.2",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "datasetProject": "dis-user-guide",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "state_abbreviations",
+                        "dataset": "campaign_tutorial",
+                        "table": "state_abbreviations",
+                        "enableQueryingViews": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"output\",\"fields\":[{\"name\":\"name\",\"type\":[\"string\",\"null\"]},{\"name\":\"abbreviation\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"output\",\"fields\":[{\"name\":\"name\",\"type\":[\"string\",\"null\"]},{\"name\":\"abbreviation\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "BigQuery",
+                "type": "batchsource",
+                "label": "BigQuery",
+                "icon": "fa-plug",
+                "$$hashKey": "object:36",
+                "isPluginAvailable": true,
+                "_uiPosition": {
+                    "left": "708px",
+                    "top": "460px"
+                }
+            }
+        ],
+        "connections": [
+            {
+                "from": "GCSFile",
+                "to": "Wrangler"
+            },
+            {
+                "from": "Wrangler",
+                "to": "Joiner"
+            },
+            {
+                "from": "Joiner",
+                "to": "BigQuery Multi Table"
+            },
+            {
+                "from": "BigQuery",
+                "to": "Joiner"
+            }
+        ],
+        "resources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "driverResources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "postActions": [],
+        "properties": {},
+        "processTimingEnabled": true,
+        "stageLoggingEnabled": true,
+        "description": "https://cloud.google.com/data-fusion/docs/tutorials/targeting-campaign-pipeline",
+        "engine": "spark",
+        "schedule": "0 1 */1 * *",
+        "maxConcurrentRuns": 1,
+        "pushdownEnabled": false
+    },
+    "version": "-SNAPSHOT"
+}
